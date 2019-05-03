@@ -395,6 +395,18 @@ def main():
                         aliases=['kwarg', 'args', 'arg'],
                         type='str',
                         default=None),
+            models=dict(required=False,
+                      type='list',
+                      aliases=['model'],
+                      default=None),
+            remove_nss=dict(required=False,
+                        type='bool',
+                        aliases=['remove_ns'],
+                        default=None),
+            namespaces=dict(required=False,
+                        type='str',
+                        aliases=['namespace'],
+                        default=None),
             attrs=dict(required=False,
                        type='str',
                        aliases=['attr'],
@@ -468,6 +480,21 @@ def main():
     else:
         kwargs = [None] * len(rpcs)
 
+    # Check over models
+    models = junos_module.params.get('models')
+    if models is not None:
+        if len(models) != len(rpcs):
+            junos_module.fail_json(msg="The attrs option must have one value"
+                                       "per rpc. There are %d rpcs and %d "
+                                       "models." %
+                                       (len(rpcs), len(models)))
+
+    # Check over remove_ns
+    remove_nss = junos_module.params.get('remove_nss')
+
+    # Check over namespace
+    namespaces = junos_module.params.get('namespaces')
+
     # Check over attrs
     attrstring = junos_module.params.get('attrs')
     attrs = junos_module.parse_arg_to_list_of_dicts('attrs',
@@ -490,7 +517,8 @@ def main():
                                        "single 'get-config' RPC.")
 
     results = list()
-    for (rpc_string, format, kwarg, attr) in zip(rpcs, formats, kwargs, attrs):
+    for (rpc_string, format, kwarg, model, namespace, attr) in \
+            zip(rpcs, formats, kwargs, models, namespaces, attrs):
         # Replace underscores with dashes in RPC name.
         rpc_string = rpc_string.replace('_', '-')
         # Set initial result values. Assume failure until we know it's success.
@@ -498,6 +526,8 @@ def main():
                   'rpc': rpc_string,
                   'format': format,
                   'kwargs': kwarg,
+                  'models': model,
+                  'namespaces': namespace,
                   'attrs': attr,
                   'changed': False,
                   'failed': True}
@@ -515,7 +545,10 @@ def main():
                                           'kwargs=%s',
                                           filter, str(attr), str(kwarg))
                 resp = junos_module.dev.rpc.get_config(filter_xml=filter,
-                                                       options=attr, **kwarg)
+                                                       options=attr, model=model,
+                                                       remove_ns=remove_nss,
+                                                       namespace=namespaces,
+                                                       **kwarg)
                 result['msg'] = 'The "get-config" RPC executed successfully.'
                 junos_module.logger.debug('The "get-config" RPC executed '
                                           'successfully.')
