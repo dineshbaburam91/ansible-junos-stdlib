@@ -100,9 +100,12 @@ class Acl_interfacesFacts(object):
                 {"config": objs},
             )
             for cfg in params["config"]:
-                facts["acl_interfaces"].append(utils.remove_empties(cfg))
+                cfg = utils.remove_empties(cfg)
+                if not cfg.get("access_groups"):
+                    continue
+                facts["acl_interfaces"].append(cfg)
                 # Included for compatibility, remove after 2025-07-01
-                facts["junos_acl_interfaces"].append(utils.remove_empties(cfg))
+                facts["junos_acl_interfaces"].append(cfg)
 
         ansible_facts["ansible_network_resources"].update(facts)
         return ansible_facts
