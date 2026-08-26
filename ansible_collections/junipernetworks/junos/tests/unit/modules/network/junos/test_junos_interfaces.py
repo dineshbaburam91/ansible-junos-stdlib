@@ -111,6 +111,29 @@ class TestJunosInterfacesModule(TestJunosModule):
         result = self.execute_module(changed=True)
         self.assertEqual(sorted(result["commands"]), sorted(commands))
 
+    def test_junos_interfaces_logical_unit_enabled_states(self):
+        set_module_args(
+            dict(
+                config=[
+                    dict(
+                        name="ae32",
+                        units=[
+                            dict(name=301, enabled=True),
+                            dict(name=302, enabled=False),
+                        ],
+                    ),
+                ],
+                state="rendered",
+            ),
+        )
+        commands = [
+            '<nc:interfaces xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            "<nc:interface><nc:name>ae32</nc:name><nc:unit><nc:name>301</nc:name>"
+            "<nc:enable/></nc:unit><nc:unit><nc:name>302</nc:name>"
+            "<nc:disable/></nc:unit></nc:interface></nc:interfaces>",
+        ]
+        self.execute_module(changed=False, commands=commands)
+
     def test_junos_interfaces_merged_idempotent(self):
         self.get_config.return_value = load_fixture(
             "junos_interfaces_config.xml",

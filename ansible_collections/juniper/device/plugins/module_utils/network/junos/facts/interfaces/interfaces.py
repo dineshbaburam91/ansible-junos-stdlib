@@ -164,21 +164,35 @@ class InterfacesFacts(object):
             unit_lst = []
             unit_dict = {}
             if isinstance(units, dict):
-                if "description" in units.keys() or "vlan-id" in units.keys():
+                if any(
+                    key in units.keys()
+                    for key in ("description", "vlan-id", "enable", "disable", "undocumented")
+                ):
                     unit_dict["name"] = units["name"]
                     if "description" in units.keys():
                         unit_dict["description"] = units["description"]
                     if "vlan-id" in units.keys():
                         unit_dict["vlan_id"] = int(units["vlan-id"])
+                    if "enable" in units or "disable" in units:
+                        unit_dict["enabled"] = "enable" in units
+                    if "undocumented" in units:
+                        unit_dict["enabled"] = "enable" in units["undocumented"]
                     unit_lst.append(unit_dict)
             else:
                 for unit in units:
-                    if "description" in unit.keys() or "vlan-id" in unit.keys():
+                    if any(
+                        key in unit.keys()
+                        for key in ("description", "vlan-id", "enable", "disable", "undocumented")
+                    ):
                         unit_dict["name"] = unit["name"]
                         if "description" in unit.keys():
                             unit_dict["description"] = unit["description"]
                         if "vlan-id" in unit.keys():
                             unit_dict["vlan_id"] = int(unit["vlan-id"])
+                        if "enable" in unit or "disable" in unit:
+                            unit_dict["enabled"] = "enable" in unit
+                        if "undocumented" in unit:
+                            unit_dict["enabled"] = "enable" in unit["undocumented"]
                         unit_lst.append(unit_dict)
                         unit_dict = {}
             config["units"] = unit_lst
