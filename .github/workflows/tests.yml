@@ -145,11 +145,14 @@ jobs:
           # 2. Install ncclient (Required to fix the 'new_ele' bug in netcommon)
           python -m pip install ncclient
 
-          # 3. Install juniper.device under the Junos collection's local search root.
-          # tox runs from that directory with ANSIBLE_COLLECTIONS_PATH=., so installing
-          # to the default user path would allow a stale collection to be selected.
+          # 3. Install the local juniper.device so it satisfies the
+          # "juniper.device: >=2.0.0" dependency instead of the stale Galaxy-published
+          # collection. Install it both under the Junos collection's local search root
+          # (tox runs from there with ANSIBLE_COLLECTIONS_PATH=.) and the default path
+          # (used by ade dependency resolution), so the local code always wins.
           ansible-galaxy collection install ansible_collections/juniper/device/ --force \
             -p ansible_collections/junipernetworks/junos
+          ansible-galaxy collection install ansible_collections/juniper/device/ --force
       - name: "Install tox-ansible, includes tox"
         run: python -m pip install tox-ansible
       - name: "Check for tox-ansible.ini file, else add default"
