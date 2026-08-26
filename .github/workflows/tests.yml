@@ -115,7 +115,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        collection: [juniper/device, junipernetworks/junos]
+        collection: [juniper/device]
         include:
           - python: "3.10"
             ansible: "2.17"
