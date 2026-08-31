@@ -677,6 +677,19 @@ class Bgp_global(ConfigBase):
                     orr.get("igp_primary"),
                 )
 
+        if want.get("local_as"):
+            local_as = want.get("local_as")
+            local_as_node = build_child_xml_node(bgp_root, "local-as")
+            build_child_xml_node(local_as_node, "as-number", local_as["as_num"])
+            if local_as.get("alias"):
+                build_child_xml_node(local_as_node, "alias")
+            if local_as.get("private"):
+                build_child_xml_node(local_as_node, "private")
+            if local_as.get("loops") is not None:
+                build_child_xml_node(local_as_node, "loops", local_as["loops"])
+            if local_as.get("no_prepend_global_as"):
+                build_child_xml_node(local_as_node, "no-prepend-global-as")
+
     def _state_deleted(self, want, have):
         """The command generator when state is deleted
         :rtype: A list
