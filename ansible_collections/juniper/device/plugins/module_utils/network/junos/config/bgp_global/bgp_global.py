@@ -193,7 +193,7 @@ class Bgp_global(ConfigBase):
                   the current configuration
         """
         bgp_xml = []
-        bgp_xml.extend(self._state_deleted(want, have))
+        bgp_xml.extend(self._state_deleted({}, have))
         bgp_xml.extend(self._state_merged(want, have))
 
         return bgp_xml
@@ -699,17 +699,18 @@ class Bgp_global(ConfigBase):
         bgp_xml = []
         if have is not None and want:
             want = remove_empties(want)
-            bgp_root = self._render_delete_bgp(want)
-            if bgp_root.getchildren():
-                bgp_xml.append(bgp_root)
-            if want.get("as_number"):
-                build_child_xml_node(
-                    self.routing_options,
-                    "autonomous-system",
-                    None,
-                    {"delete": "delete"},
-                )
-            return bgp_xml
+            if want:
+                bgp_root = self._render_delete_bgp(want)
+                if bgp_root.getchildren():
+                    bgp_xml.append(bgp_root)
+                if want.get("as_number"):
+                    build_child_xml_node(
+                        self.routing_options,
+                        "autonomous-system",
+                        None,
+                        {"delete": "delete"},
+                    )
+                return bgp_xml
 
         parser = [
             "accept-remote-nexthop",
