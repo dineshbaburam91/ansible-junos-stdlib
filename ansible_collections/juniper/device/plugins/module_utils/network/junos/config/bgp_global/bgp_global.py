@@ -697,6 +697,20 @@ class Bgp_global(ConfigBase):
                   of the provided objects
         """
         bgp_xml = []
+        if have is not None and want:
+            want = remove_empties(want)
+            bgp_root = self._render_delete_bgp(want)
+            if bgp_root.getchildren():
+                bgp_xml.append(bgp_root)
+            if want.get("as_number"):
+                build_child_xml_node(
+                    self.routing_options,
+                    "autonomous-system",
+                    None,
+                    {"delete": "delete"},
+                )
+            return bgp_xml
+
         parser = [
             "accept-remote-nexthop",
             "add-path-display-ipv4-address",
@@ -770,6 +784,118 @@ class Bgp_global(ConfigBase):
                 )
             bgp_xml.append(bgp_root)
         return bgp_xml
+
+    def _render_delete_bgp(self, want):
+        delete = {"delete": "delete"}
+        bgp_root = build_root_xml_node("bgp")
+        parser = [
+            "accept-remote-nexthop",
+            "add-path-display-ipv4-address",
+            "advertise-bgp-static",
+            "advertise-external",
+            "advertise-from-main-vpn-tables",
+            "advertise-inactive",
+            "advertise-peer-as",
+            "authentication-algorithm",
+            "authentication-key",
+            "authentication-key-chain",
+            "as-override",
+            "bfd-liveness-detection",
+            "bgp-error-tolerance",
+            "bmp",
+            "cluster",
+            "damping",
+            "description",
+            "disable",
+            "egress-te",
+            "egress-te-sid-stats",
+            "enforce-first-as",
+            "export",
+            "forwarding-context",
+            "graceful-restart",
+            "hold-time",
+            "idle-after-switch-over",
+            "holddown-all-stale-labels",
+            "import",
+            "include-mp-next-hop",
+            "ipsec-sa",
+            "keep",
+            "local-address",
+            "local-as",
+            "local-interface",
+            "local-preference",
+            "log-updown",
+            "metric-out",
+            "mtu-discovery",
+            "multihop",
+            "multipath",
+            "no-advertise-peer-as",
+            "no-aggregator-id",
+            "no-client-reflect",
+            "no-precision-timers",
+            "out-delay",
+            "outbound-route-filter",
+            "passive",
+            "path-selection",
+            "peer-as",
+            "precision-timers",
+            "preference",
+            "remove-private",
+            "rfc6514-compliant-safi129",
+            "route-server-client",
+            "send-addpath-optimization",
+            "snmp-options",
+            "sr-preference-override",
+            "stale-labels-holddown-period",
+            "tcp-aggressive-transmission",
+            "tcp-mss",
+            "traceoptions",
+            "traffic-statistics-labeled-path",
+            "ttl",
+            "unconfigured-peer-graceful-restart",
+            "vpn-apply-export",
+        ]
+        self._delete_requested_attributes(bgp_root, want, parser)
+        if want.get("groups"):
+            for group in want.get("groups"):
+                group_node = build_child_xml_node(
+                    bgp_root,
+                    "group",
+                    None,
+                    delete if set(group.keys()) == set(["name"]) else None,
+                )
+                build_child_xml_node(group_node, "name", group["name"])
+                self._delete_requested_attributes(group_node, group, parser)
+                if group.get("neighbors"):
+                    for neighbor in group.get("neighbors"):
+                        neighbor_node = build_child_xml_node(
+                            group_node,
+                            "neighbor",
+                            None,
+                            delete
+                            if set(neighbor.keys()) == set(["neighbor_address"])
+                            else None,
+                        )
+                        build_child_xml_node(
+                            neighbor_node,
+                            "name",
+                            neighbor["neighbor_address"],
+                        )
+                        self._delete_requested_attributes(
+                            neighbor_node,
+                            neighbor,
+                            parser,
+                        )
+        return bgp_root
+
+    def _delete_requested_attributes(self, node, want, parser):
+        delete = {"delete": "delete"}
+        for attrib in parser:
+            want_key = attrib.replace("-", "_")
+            if attrib == "cluster":
+                want_key = "cluster_id"
+            if want_key in want.keys():
+                build_child_xml_node(node, attrib, None, delete)
 
     def _state_purged(self, want, have):
         """The command generator when state is deleted
