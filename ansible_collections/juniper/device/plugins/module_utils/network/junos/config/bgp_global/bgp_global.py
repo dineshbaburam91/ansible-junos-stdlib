@@ -307,6 +307,7 @@ class Bgp_global(ConfigBase):
                 for group in groups:
                     groups_node = build_child_xml_node(bgp_root, "group")
                     build_child_xml_node(groups_node, "name", group["name"])
+                    self._add_apply_groups(groups_node, group)
                     # Parse the boolean value attributes
                     for item in bool_parser:
                         groups_node = self._add_node(
@@ -343,6 +344,7 @@ class Bgp_global(ConfigBase):
                                 "name",
                                 neighbor["neighbor_address"],
                             )
+                            self._add_apply_groups(neighbors_node, neighbor)
                             # Parse the boolean value attributes
                             for item in bool_parser:
                                 neighbors_node = self._add_node(
@@ -690,6 +692,10 @@ class Bgp_global(ConfigBase):
             if local_as.get("no_prepend_global_as"):
                 build_child_xml_node(local_as_node, "no-prepend-global-as")
 
+    def _add_apply_groups(self, node, config):
+        for apply_group in config.get("apply_groups", []):
+            build_child_xml_node(node, "apply-groups", apply_group)
+
     def _state_deleted(self, want, have):
         """The command generator when state is deleted
         :rtype: A list
@@ -800,6 +806,7 @@ class Bgp_global(ConfigBase):
             "authentication-algorithm",
             "authentication-key",
             "authentication-key-chain",
+            "apply-groups",
             "as-override",
             "bfd-liveness-detection",
             "bgp-error-tolerance",
@@ -866,6 +873,7 @@ class Bgp_global(ConfigBase):
                     delete if set(group.keys()) == set(["name"]) else None,
                 )
                 build_child_xml_node(group_node, "name", group["name"])
+                self._delete_apply_groups(group_node, group)
                 self._delete_requested_attributes(group_node, group, parser)
                 if group.get("neighbors"):
                     for neighbor in group.get("neighbors"):
@@ -882,6 +890,7 @@ class Bgp_global(ConfigBase):
                             "name",
                             neighbor["neighbor_address"],
                         )
+                        self._delete_apply_groups(neighbor_node, neighbor)
                         self._delete_requested_attributes(
                             neighbor_node,
                             neighbor,
@@ -892,11 +901,17 @@ class Bgp_global(ConfigBase):
     def _delete_requested_attributes(self, node, want, parser):
         delete = {"delete": "delete"}
         for attrib in parser:
+            if attrib == "apply-groups":
+                continue
             want_key = attrib.replace("-", "_")
             if attrib == "cluster":
                 want_key = "cluster_id"
             if want_key in want.keys():
                 build_child_xml_node(node, attrib, None, delete)
+
+    def _delete_apply_groups(self, node, config):
+        for apply_group in config.get("apply_groups", []):
+            build_child_xml_node(node, "apply-groups", apply_group, {"delete": "delete"})
 
     def _state_purged(self, want, have):
         """The command generator when state is deleted

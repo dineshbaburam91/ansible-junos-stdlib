@@ -244,6 +244,12 @@ class Bgp_globalFacts(object):
         return bgp_global
 
     def parse_attrib(self, cfg_dict, conf, type=None):
+        if "apply-groups" in conf.keys():
+            apply_groups = conf.get("apply-groups")
+            if not isinstance(apply_groups, list):
+                apply_groups = [apply_groups]
+            cfg_dict["apply_groups"] = apply_groups
+
         # Read accept-remote-nexthop value
         if "accept-remote-nexthop" in conf.keys():
             cfg_dict["accept_remote_nexthop"] = True

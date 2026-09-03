@@ -793,6 +793,10 @@ options:
           name:
             description: Specify the name of the group
             type: str
+          apply_groups:
+            description: Inherit configuration from global configuration groups.
+            type: list
+            elements: str
           accept_remote_nexthop: *accept_remote_nexthop
           add_path_display_ipv4_address: *add_path_display_ipv4_address
           advertise_bgp_static: *advertise_bgp_static
@@ -878,6 +882,10 @@ options:
               neighbor_address:
                 description: Specify neighbor address.
                 type: str
+              apply_groups:
+                description: Inherit configuration from global configuration groups.
+                type: list
+                elements: str
               accept_remote_nexthop: *accept_remote_nexthop
               add_path_display_ipv4_address: *add_path_display_ipv4_address
               advertise_bgp_static: *advertise_bgp_static
