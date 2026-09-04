@@ -177,7 +177,7 @@ class Bgp_globalFacts(object):
             bgp_group = {}
             groups = bgp.get("group")
             if isinstance(groups, dict):
-                self.parse_attrib(bgp_group, groups)
+                self.parse_attrib(bgp_group, groups, "group")
                 # parse neighbors
                 if "neighbor" in groups.keys():
                     neighbors_lst = []
@@ -209,7 +209,7 @@ class Bgp_globalFacts(object):
             else:
                 for group in groups:
                     bgp_group = {}
-                    self.parse_attrib(bgp_group, group)
+                    self.parse_attrib(bgp_group, group, "group")
                     # Parse neighbors in the group list
                     if "neighbor" in group.keys():
                         neighbors_lst = []
@@ -249,6 +249,9 @@ class Bgp_globalFacts(object):
             if not isinstance(apply_groups, list):
                 apply_groups = [apply_groups]
             cfg_dict["apply_groups"] = apply_groups
+
+        if type in ("group", "neighbor") and conf.get("@inactive") == "inactive":
+            cfg_dict["inactive"] = True
 
         # Read accept-remote-nexthop value
         if "accept-remote-nexthop" in conf.keys():

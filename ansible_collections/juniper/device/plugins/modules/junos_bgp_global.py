@@ -793,6 +793,9 @@ options:
           name:
             description: Specify the name of the group
             type: str
+          inactive: &inactive
+            description: Deactivate this BGP group.
+            type: bool
           apply_groups:
             description: Inherit configuration from global configuration groups.
             type: list
@@ -882,6 +885,7 @@ options:
               neighbor_address:
                 description: Specify neighbor address.
                 type: str
+              inactive: *inactive
               apply_groups:
                 description: Inherit configuration from global configuration groups.
                 type: list

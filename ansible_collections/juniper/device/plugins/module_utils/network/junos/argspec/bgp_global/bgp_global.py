@@ -448,6 +448,7 @@ class Bgp_globalArgs(object):  # pylint: disable=R0903
                             },
                             "type": "dict",
                         },
+                        "inactive": {"type": "bool"},
                         "name": {"type": "str"},
                         "apply_groups": {
                             "elements": "str",
@@ -725,6 +726,7 @@ class Bgp_globalArgs(object):  # pylint: disable=R0903
                                     },
                                     "type": "dict",
                                 },
+                                "inactive": {"type": "bool"},
                                 "neighbor_address": {"type": "str"},
                                 "apply_groups": {
                                     "elements": "str",
