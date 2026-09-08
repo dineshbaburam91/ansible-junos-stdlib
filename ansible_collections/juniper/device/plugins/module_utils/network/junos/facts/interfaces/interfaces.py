@@ -125,6 +125,25 @@ class InterfacesFacts(object):
         )
         return xml_dict
 
+    @staticmethod
+    def _parse_unit(unit):
+        """Extract one logical unit's facts from its xmltodict mapping.
+
+        Returns None for structural-only units (e.g. family-only) that carry
+        none of the resource-module managed keys.
+        """
+        managed_keys = ("description", "vlan-id", "enable", "disable")
+        if not any(key in unit for key in managed_keys):
+            return None
+        unit_dict = {"name": unit["name"]}
+        if "description" in unit:
+            unit_dict["description"] = unit["description"]
+        if "vlan-id" in unit:
+            unit_dict["vlan_id"] = int(unit["vlan-id"])
+        if "enable" in unit or "disable" in unit:
+            unit_dict["enabled"] = "enable" in unit
+        return unit_dict
+
     def render_config(self, spec, conf):
         """
         Render config as dictionary structure and delete keys
@@ -161,40 +180,13 @@ class InterfacesFacts(object):
         unit_cfg = cfg.get("interface")
         if "unit" in unit_cfg.keys():
             units = unit_cfg.get("unit")
-            unit_lst = []
-            unit_dict = {}
             if isinstance(units, dict):
-                if any(
-                    key in units.keys()
-                    for key in ("description", "vlan-id", "enable", "disable", "undocumented")
-                ):
-                    unit_dict["name"] = units["name"]
-                    if "description" in units.keys():
-                        unit_dict["description"] = units["description"]
-                    if "vlan-id" in units.keys():
-                        unit_dict["vlan_id"] = int(units["vlan-id"])
-                    if "enable" in units or "disable" in units:
-                        unit_dict["enabled"] = "enable" in units
-                    if "undocumented" in units:
-                        unit_dict["enabled"] = "enable" in units["undocumented"]
-                    unit_lst.append(unit_dict)
-            else:
-                for unit in units:
-                    if any(
-                        key in unit.keys()
-                        for key in ("description", "vlan-id", "enable", "disable", "undocumented")
-                    ):
-                        unit_dict["name"] = unit["name"]
-                        if "description" in unit.keys():
-                            unit_dict["description"] = unit["description"]
-                        if "vlan-id" in unit.keys():
-                            unit_dict["vlan_id"] = int(unit["vlan-id"])
-                        if "enable" in unit or "disable" in unit:
-                            unit_dict["enabled"] = "enable" in unit
-                        if "undocumented" in unit:
-                            unit_dict["enabled"] = "enable" in unit["undocumented"]
-                        unit_lst.append(unit_dict)
-                        unit_dict = {}
+                units = [units]
+            unit_lst = []
+            for unit in units:
+                parsed_unit = self._parse_unit(unit)
+                if parsed_unit:
+                    unit_lst.append(parsed_unit)
             config["units"] = unit_lst
 
         return utils.remove_empties(config)

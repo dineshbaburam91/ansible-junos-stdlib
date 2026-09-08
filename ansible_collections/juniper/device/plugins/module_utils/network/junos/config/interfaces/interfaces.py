@@ -369,6 +369,9 @@ class Interfaces(ConfigBase):
                                 None,
                                 {"delete": "delete"},
                             )
+                        # Unlike the interface-level case (which only removes
+                        # <disable/>), a unit deletes whichever admin-state tag
+                        # it currently carries so both enable and disable clear.
                         if unit.get("enabled") is True:
                             build_child_xml_node(
                                 unit_node,
