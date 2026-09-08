@@ -67,7 +67,15 @@ jobs:
           - python: "3.10"
             ansible: "2.17"
           - python: "3.11"
+            ansible: "2.17"
+          - python: "3.11"
+            ansible: "2.18"
+          - python: "3.11"
             ansible: "2.19"
+          - python: "3.12"
+            ansible: "2.17"
+          - python: "3.12"
+            ansible: "2.18"
           - python: "3.12"
             ansible: "2.19"
     steps:
@@ -115,11 +123,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        collection: [juniper/device]
+        collection: [juniper/device, junipernetworks/junos]
         include:
           - python: "3.10"
             ansible: "2.17"
           - python: "3.11"
+            ansible: "2.17"
+          - python: "3.11"
+            ansible: "2.18"
+          - python: "3.11"
+            ansible: "2.19"
+          - python: "3.12"
+            ansible: "2.17"
+          - python: "3.12"
+            ansible: "2.18"
+          - python: "3.12"
             ansible: "2.19"
     steps:
       - uses: actions/checkout@v4
@@ -173,10 +191,20 @@ jobs:
       matrix:
         collection: [juniper/device, junipernetworks/junos]
         include:
+          - ansible_version: "stable-2.16"
+            python_version: "3.11"
           - ansible_version: "stable-2.17"
-            python_version: "3.10"
+            python_version: "3.11"
+          - ansible_version: "stable-2.18"
+            python_version: "3.11"
           - ansible_version: "stable-2.19"
             python_version: "3.11"
+          - ansible_version: "stable-2.20"
+            python_version: "3.12"
+          - ansible_version: "milestone"
+            python_version: "3.12"
+          - ansible_version: "devel"
+            python_version: "3.13"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
