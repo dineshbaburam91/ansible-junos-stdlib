@@ -128,11 +128,63 @@ class TestJunosInterfacesModule(TestJunosModule):
         )
         commands = [
             '<nc:interfaces xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
-            "<nc:interface><nc:name>ae32</nc:name><nc:unit><nc:name>301</nc:name>"
+            "<nc:interface><nc:name>ae32</nc:name><nc:enable/><nc:unit><nc:name>301</nc:name>"
             "<nc:enable/></nc:unit><nc:unit><nc:name>302</nc:name>"
             "<nc:disable/></nc:unit></nc:interface></nc:interfaces>",
         ]
-        self.execute_module(changed=False, commands=commands)
+        result = self.execute_module(changed=False)
+        self.assertEqual(result["rendered"], commands[0])
+
+    def test_junos_interfaces_unit_enabled_merged_idempotent(self):
+        set_module_args(
+            dict(
+                config=[
+                    dict(
+                        name="ae32",
+                        units=[
+                            dict(name=301, enabled=True),
+                            dict(name=302, enabled=False),
+                        ],
+                    ),
+                ],
+                state="merged",
+            ),
+        )
+        commands = [
+            '<nc:interfaces xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            "<nc:interface><nc:name>ae32</nc:name><nc:enable/>"
+            "<nc:unit><nc:name>301</nc:name><nc:enable/></nc:unit>"
+            "<nc:unit><nc:name>302</nc:name><nc:disable/></nc:unit>"
+            "</nc:interface></nc:interfaces>",
+        ]
+        result = self.execute_module(changed=False)
+        self.assertEqual(result["commands"], commands)
+        self.assertFalse(result["changed"])
+
+    def test_junos_interfaces_unit_enabled_parsed(self):
+        parsed_str = load_fixture(
+            "junos_interfaces_unit_enabled_config.xml",
+            content="str",
+        )
+        set_module_args(dict(running_config=parsed_str, state="parsed"))
+        # validate_config is mocked to a MagicMock in setUp; make it a passthrough
+        # so the facts parser returns the real rendered config for this test.
+        self.validate_config.side_effect = lambda spec, conf: conf
+        result = self.execute_module(changed=False)
+        self.assertEqual(
+            result["parsed"],
+            [
+                {
+                    "name": "ae32",
+                    "enabled": True,
+                    "vlan_tagging": False,
+                    "units": [
+                        {"name": "301", "enabled": True},
+                        {"name": "302", "enabled": False},
+                    ],
+                },
+            ],
+        )
 
     def test_junos_interfaces_merged_idempotent(self):
         self.get_config.return_value = load_fixture(
@@ -273,9 +325,11 @@ class TestJunosInterfacesModule(TestJunosModule):
             "<nc:description>This is configured with ansible resource module</nc:description>"
             "<nc:speed>100m</nc:speed>"
             "<nc:mtu>1024</nc:mtu>"
+            "<nc:enable/>"
             "</nc:interface></nc:interfaces>",
         ]
-        self.execute_module(changed=False, commands=commands)
+        result = self.execute_module(changed=False)
+        self.assertEqual(result["rendered"], commands[0])
 
     def test_junos_interfaces_merged_comment_01(self):
         original_set_module_args = set_module_args
