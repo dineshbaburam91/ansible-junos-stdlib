@@ -64,20 +64,16 @@ jobs:
       matrix:
         collection: [juniper/device, junipernetworks/junos]
         include:
-          - python: "3.10"
-            ansible: "2.17"
-          - python: "3.11"
-            ansible: "2.17"
-          - python: "3.11"
-            ansible: "2.18"
           - python: "3.11"
             ansible: "2.19"
+          - python: "3.11"
+            ansible: "2.20"
+          - python: "3.11"
+            ansible: "2.21"
           - python: "3.12"
-            ansible: "2.17"
-          - python: "3.12"
-            ansible: "2.18"
-          - python: "3.12"
-            ansible: "2.19"
+            ansible: "2.21"
+          - python: "3.13"
+            ansible: "2.21"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,20 +121,16 @@ jobs:
       matrix:
         collection: [juniper/device, junipernetworks/junos]
         include:
-          - python: "3.10"
-            ansible: "2.17"
-          - python: "3.11"
-            ansible: "2.17"
-          - python: "3.11"
-            ansible: "2.18"
           - python: "3.11"
             ansible: "2.19"
+          - python: "3.11"
+            ansible: "2.20"
+          - python: "3.11"
+            ansible: "2.21"
           - python: "3.12"
-            ansible: "2.17"
-          - python: "3.12"
-            ansible: "2.18"
-          - python: "3.12"
-            ansible: "2.19"
+            ansible: "2.21"
+          - python: "3.13"
+            ansible: "2.21"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -153,8 +145,9 @@ jobs:
         run: |
           # Install cross-collection deps into the ABSOLUTE workspace tree so the
           # tox step's ANSIBLE_COLLECTIONS_PATH resolves every collection via an
-          # absolute path. ansible-core >=2.19 raises "relative resource paths
-          # not supported" when reading collection source through a relative path.
+          # absolute path. ansible-core's collection loader raises "relative
+          # resource paths not supported" when reading collection source through
+          # a relative path (long-standing invariant, present in 2.17-2.21).
           # juniper.device and junipernetworks.junos already live under the
           # workspace (checked-out source), so only netcommon/utils are added here.
           ansible-galaxy collection install ansible.netcommon ansible.utils \
@@ -178,8 +171,8 @@ jobs:
           python -m tox --ansible -c tox-ansible.ini -e unit-py${{ matrix.python }}-${{ matrix.ansible }}
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          # ansible-core >=2.19 rejects reading collection source via relative
-          # paths; force the sibling juniper.device to resolve absolutely.
+          # ansible-core's collection loader rejects reading source via relative
+          # paths; force every collection to resolve from the absolute workspace.
           ANSIBLE_COLLECTIONS_PATH: "${{ github.workspace }}"
           TOX_OVERRIDE: "testenv.passenv=ANSIBLE_COLLECTIONS_PATH"
 
@@ -192,18 +185,14 @@ jobs:
       matrix:
         collection: [juniper/device, junipernetworks/junos]
         include:
-          - ansible_version: "stable-2.16"
-            python_version: "3.11"
-          - ansible_version: "stable-2.17"
-            python_version: "3.11"
-          - ansible_version: "stable-2.18"
-            python_version: "3.11"
           - ansible_version: "stable-2.19"
             python_version: "3.11"
           - ansible_version: "stable-2.20"
+            python_version: "3.11"
+          - ansible_version: "stable-2.21"
             python_version: "3.12"
           - ansible_version: "milestone"
-            python_version: "3.12"
+            python_version: "3.13"
           - ansible_version: "devel"
             python_version: "3.13"
     steps:
