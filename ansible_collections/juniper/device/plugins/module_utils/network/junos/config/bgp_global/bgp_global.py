@@ -752,17 +752,48 @@ class Bgp_global(ConfigBase):
                 )
             else:
                 rp_node = build_child_xml_node(bgp_root, "remove-private")
-                if remove_private.get("all_replace_nearest"):
+                if remove_private.get("all_replace_nearest") is True:
                     all_node = build_child_xml_node(rp_node, "all")
                     replace_node = build_child_xml_node(all_node, "replace")
                     build_child_xml_node(replace_node, "nearest")
-                elif remove_private.get("all_replace"):
+                elif remove_private.get("all_replace_nearest") is False:
+                    all_node = build_child_xml_node(rp_node, "all")
+                    replace_node = build_child_xml_node(all_node, "replace")
+                    build_child_xml_node(
+                        replace_node,
+                        "nearest",
+                        None,
+                        {"delete": "delete"},
+                    )
+                elif remove_private.get("all_replace") is True:
                     all_node = build_child_xml_node(rp_node, "all")
                     build_child_xml_node(all_node, "replace")
-                elif remove_private.get("all"):
+                elif remove_private.get("all_replace") is False:
+                    all_node = build_child_xml_node(rp_node, "all")
+                    build_child_xml_node(
+                        all_node,
+                        "replace",
+                        None,
+                        {"delete": "delete"},
+                    )
+                elif remove_private.get("all") is True:
                     build_child_xml_node(rp_node, "all")
-                if remove_private.get("no_peer_loop_check"):
+                elif remove_private.get("all") is False:
+                    build_child_xml_node(
+                        rp_node,
+                        "all",
+                        None,
+                        {"delete": "delete"},
+                    )
+                if remove_private.get("no_peer_loop_check") is True:
                     build_child_xml_node(rp_node, "no-peer-loop-check")
+                elif remove_private.get("no_peer_loop_check") is False:
+                    build_child_xml_node(
+                        rp_node,
+                        "no-peer-loop-check",
+                        None,
+                        {"delete": "delete"},
+                    )
 
     def _add_apply_groups(self, node, config):
         for apply_group in config.get("apply_groups", []):
