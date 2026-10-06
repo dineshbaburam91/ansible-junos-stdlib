@@ -391,6 +391,37 @@ class TestJunosBgp_globalModule(TestJunosModule):
         result = self.execute_module(changed=False)
         self.assertEqual(result["rendered"], rendered)
 
+    def test_junos_bgp_global_merged_activate_inactive_group_and_neighbor(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    groups=[
+                        dict(
+                            name="ANSIBLE_TEST",
+                            inactive=False,
+                            neighbors=[
+                                dict(
+                                    neighbor_address="1.1.1.1",
+                                    inactive=False,
+                                    peer_as="65101",
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                state="merged",
+            ),
+        )
+        commands = [
+            '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            '<nc:bgp><nc:group active="active"><nc:name>ANSIBLE_TEST</nc:name>'
+            '<nc:neighbor active="active"><nc:name>1.1.1.1</nc:name>'
+            '<nc:peer-as>65101</nc:peer-as></nc:neighbor></nc:group></nc:bgp></nc:protocols>',
+            '<nc:routing-options xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"/>',
+        ]
+        result = self.execute_module(changed=True, commands=commands)
+        self.assertEqual(sorted(result["commands"]), sorted(commands))
+
     def test_junos_bgp_global_rendered_apply_groups(self):
         set_module_args(
             dict(

@@ -306,8 +306,10 @@ class Bgp_global(ConfigBase):
                 # Generate commands for each group in group list
                 for group in groups:
                     groups_node = build_child_xml_node(bgp_root, "group")
-                    if group.get("inactive"):
+                    if group.get("inactive") is True:
                         groups_node.set("inactive", "inactive")
+                    elif group.get("inactive") is False:
+                        groups_node.set("active", "active")
                     build_child_xml_node(groups_node, "name", group["name"])
                     self._add_apply_groups(groups_node, group)
                     # Parse the boolean value attributes
@@ -341,8 +343,10 @@ class Bgp_global(ConfigBase):
                                 groups_node,
                                 "neighbor",
                             )
-                            if neighbor.get("inactive"):
+                            if neighbor.get("inactive") is True:
                                 neighbors_node.set("inactive", "inactive")
+                            elif neighbor.get("inactive") is False:
+                                neighbors_node.set("active", "active")
                             build_child_xml_node(
                                 neighbors_node,
                                 "name",
