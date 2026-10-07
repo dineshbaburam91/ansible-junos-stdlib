@@ -1725,13 +1725,153 @@ class TestJunosBgp_address_familyModule(TestJunosModule):
             '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
             "<nc:bgp><nc:family><nc:evpn><nc:signaling><nc:accepted-prefix-limit>"
             "<nc:maximum>20</nc:maximum><nc:teardown><nc:limit-threshold>98</nc:limit-threshold>"
-            "<nc:idle-timeout/><nc:idle-timeout><nc:forever/></nc:idle-timeout></nc:teardown>"
+            "<nc:idle-timeout><nc:forever/></nc:idle-timeout></nc:teardown>"
             "</nc:accepted-prefix-limit></nc:signaling></nc:evpn></nc:family></nc:bgp></nc:protocols>",
             '<nc:routing-options xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"/>',
         ]
 
         result = self.execute_module(changed=True)
         self.assertEqual(sorted(result["commands"]), sorted(commands))
+
+    def test_junos_bgp_address_family_prefix_limit_false_options(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    address_family=[
+                        dict(
+                            afi="inet",
+                            af_type=[
+                                dict(
+                                    type="unicast",
+                                    prefix_limit=dict(
+                                        maximum=160,
+                                        teardown=False,
+                                    ),
+                                ),
+                                dict(
+                                    type="multicast",
+                                    prefix_limit=dict(
+                                        maximum=260,
+                                        teardown=True,
+                                        limit_threshold=70,
+                                        idle_timeout_value=5,
+                                        forever=False,
+                                    ),
+                                ),
+                                dict(
+                                    type="any",
+                                    prefix_limit=dict(
+                                        maximum=360,
+                                        limit_threshold=80,
+                                        idle_timeout=False,
+                                    ),
+                                ),
+                                dict(
+                                    type="flow",
+                                    accepted_prefix_limit=dict(
+                                        maximum=460,
+                                        teardown=False,
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                state="rendered",
+            ),
+        )
+        rendered = (
+            '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            '<nc:bgp><nc:family><nc:inet><nc:unicast><nc:prefix-limit>'
+            '<nc:maximum>160</nc:maximum><nc:teardown delete="delete"/>'
+            '</nc:prefix-limit></nc:unicast><nc:multicast><nc:prefix-limit>'
+            '<nc:maximum>260</nc:maximum><nc:teardown><nc:limit-threshold>70</nc:limit-threshold>'
+            '<nc:idle-timeout><nc:timeout>5</nc:timeout><nc:forever delete="delete"/>'
+            '</nc:idle-timeout></nc:teardown></nc:prefix-limit></nc:multicast>'
+            '<nc:any><nc:prefix-limit><nc:maximum>360</nc:maximum><nc:teardown>'
+            '<nc:limit-threshold>80</nc:limit-threshold>'
+            '<nc:idle-timeout delete="delete"/></nc:teardown></nc:prefix-limit></nc:any>'
+            '<nc:flow><nc:accepted-prefix-limit><nc:maximum>460</nc:maximum>'
+            '<nc:teardown delete="delete"/></nc:accepted-prefix-limit></nc:flow>'
+            '</nc:inet></nc:family></nc:bgp></nc:protocols>'
+        )
+        result = self.execute_module(changed=False)
+        self.assertEqual(result["rendered"], rendered)
+
+    def test_junos_bgp_address_family_prefix_limit_rejects_conflicts(self):
+        for prefix_limit, expected_message in (
+            (
+                dict(maximum=160, teardown=False, limit_threshold=70),
+                "teardown: false cannot be combined",
+            ),
+            (
+                dict(maximum=160, limit_threshold=70, idle_timeout_value=5, forever=True),
+                "forever: true cannot be combined with idle_timeout_value",
+            ),
+        ):
+            with self.subTest(prefix_limit=prefix_limit):
+                set_module_args(
+                    dict(
+                        config=dict(
+                            address_family=[
+                                dict(
+                                    afi="inet",
+                                    af_type=[
+                                        dict(type="unicast", prefix_limit=prefix_limit),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        state="rendered",
+                    ),
+                )
+                result = self.execute_module(failed=True)
+                self.assertIn(expected_message, result["msg"])
+
+    def test_junos_bgp_address_family_prefix_limit_facts_include_containers(self):
+        from ansible_collections.juniper.device.plugins.module_utils.network.junos.facts.bgp_address_family.bgp_address_family import (
+            Bgp_address_familyFacts,
+        )
+
+        parser = Bgp_address_familyFacts(None)
+        self.assertEqual(
+            parser.parse_accepted_prefix_limit(
+                {
+                    "prefix-limit": {
+                        "maximum": "160",
+                        "teardown": {
+                            "limit-threshold": "70",
+                            "idle-timeout": {"timeout": "5"},
+                        },
+                    },
+                },
+            ),
+            {
+                "maximum": "160",
+                "teardown": True,
+                "limit_threshold": "70",
+                "idle_timeout": True,
+                "idle_timeout_value": "5",
+            },
+        )
+        self.assertEqual(
+            parser.parse_accepted_prefix_limit(
+                {
+                    "accepted-prefix-limit": {
+                        "teardown": {
+                            "limit-threshold": "70",
+                            "idle-timeout": {"forever": None},
+                        },
+                    },
+                },
+            ),
+            {
+                "teardown": True,
+                "limit_threshold": "70",
+                "idle_timeout": True,
+                "forever": True,
+            },
+        )
 
     def test_junos_bgp_address_family_config_003(self):
         """
@@ -2555,7 +2695,8 @@ class TestJunosBgp_address_familyModule(TestJunosModule):
         commands = [
             '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
             "<nc:bgp><nc:family><nc:inet><nc:labeled-unicast><nc:prefix-limit>"
-            "<nc:maximum>4294967290</nc:maximum><nc:teardown>22<nc:idle-timeout>2200</nc:idle-timeout>"
+            "<nc:maximum>4294967290</nc:maximum><nc:teardown><nc:limit-threshold>22</nc:limit-threshold>"
+            "<nc:idle-timeout><nc:timeout>2200</nc:timeout></nc:idle-timeout>"
             "</nc:teardown></nc:prefix-limit></nc:labeled-unicast>"
             "</nc:inet></nc:family></nc:bgp></nc:protocols>",
             '<nc:routing-options xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"/>',

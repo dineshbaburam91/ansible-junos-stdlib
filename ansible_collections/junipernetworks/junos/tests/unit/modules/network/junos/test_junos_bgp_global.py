@@ -937,6 +937,41 @@ class TestJunosBgp_globalModule(TestJunosModule):
         result = self.execute_module(changed=False)
         self.assertEqual(result["rendered"], rendered)
 
+    def test_junos_bgp_global_merged_local_as_no_prepend_global_as_false(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    groups=[
+                        dict(
+                            name="ANSIBLE_TEST",
+                            neighbors=[
+                                dict(
+                                    neighbor_address="1.1.1.1",
+                                    peer_as="65101",
+                                    local_as=dict(
+                                        as_num="12345",
+                                        no_prepend_global_as=False,
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                state="merged",
+            ),
+        )
+        commands = [
+            '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            '<nc:bgp><nc:group><nc:name>ANSIBLE_TEST</nc:name>'
+            '<nc:neighbor><nc:name>1.1.1.1</nc:name><nc:peer-as>65101</nc:peer-as>'
+            '<nc:local-as><nc:as-number>12345</nc:as-number>'
+            '<nc:no-prepend-global-as delete="delete"/></nc:local-as>'
+            '</nc:neighbor></nc:group></nc:bgp></nc:protocols>',
+            '<nc:routing-options xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"/>',
+        ]
+        result = self.execute_module(changed=True, commands=commands)
+        self.assertEqual(sorted(result["commands"]), sorted(commands))
+
     def test_junos_bgp_global_merged_apply_groups(self):
         set_module_args(
             dict(
