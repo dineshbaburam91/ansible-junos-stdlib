@@ -718,10 +718,10 @@ class Bgp_address_family(ConfigBase):
             )
         ):
             self._module.fail_json(
-                    msg=(
-                        "teardown: false cannot be combined with limit_threshold, "
-                        "idle_timeout, idle_timeout_value, or forever"
-                    ),
+                msg=(
+                    "teardown: false cannot be combined with limit_threshold, "
+                    "idle_timeout, idle_timeout_value, or forever"
+                ),
             )
         if (
             prefix_limit.get("idle_timeout") is False
@@ -731,10 +731,10 @@ class Bgp_address_family(ConfigBase):
             )
         ):
             self._module.fail_json(
-                    msg=(
-                        "idle_timeout: false cannot be combined with idle_timeout_value "
-                        "or forever: true"
-                    ),
+                msg=(
+                    "idle_timeout: false cannot be combined with idle_timeout_value "
+                    "or forever: true"
+                ),
             )
         if prefix_limit.get("forever") is True and "idle_timeout_value" in prefix_limit:
             self._module.fail_json(
