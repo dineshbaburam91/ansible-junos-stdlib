@@ -721,6 +721,52 @@ class Bgp_global(ConfigBase):
                     {"delete": "delete"},
                 )
 
+        if want.get("multipath"):
+            multipath = want.get("multipath")
+            if multipath.get("set") is False:
+                build_child_xml_node(
+                    bgp_root,
+                    "multipath",
+                    None,
+                    {"delete": "delete"},
+                )
+            else:
+                multipath_node = build_child_xml_node(bgp_root, "multipath")
+                if multipath.get("disable") is True:
+                    build_child_xml_node(multipath_node, "disable")
+                elif multipath.get("disable") is False:
+                    build_child_xml_node(
+                        multipath_node,
+                        "disable",
+                        None,
+                        {"delete": "delete"},
+                    )
+
+                if multipath.get("multiple_as") is False:
+                    build_child_xml_node(
+                        multipath_node,
+                        "multiple-as",
+                        None,
+                        {"delete": "delete"},
+                    )
+                elif (
+                    multipath.get("multiple_as") is True
+                    or multipath.get("multiple_as_disable") is not None
+                ):
+                    multiple_as_node = build_child_xml_node(
+                        multipath_node,
+                        "multiple-as",
+                    )
+                    if multipath.get("multiple_as_disable") is True:
+                        build_child_xml_node(multiple_as_node, "disable")
+                    elif multipath.get("multiple_as_disable") is False:
+                        build_child_xml_node(
+                            multiple_as_node,
+                            "disable",
+                            None,
+                            {"delete": "delete"},
+                        )
+
         # Generate config commands for multihop
         if want.get("multihop"):
             multihop = want.get("multihop")

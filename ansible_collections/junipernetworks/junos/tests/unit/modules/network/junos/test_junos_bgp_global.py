@@ -319,6 +319,62 @@ class TestJunosBgp_globalModule(TestJunosModule):
         result = self.execute_module(changed=False)
         self.assertEqual(sorted(result["rendered"]), sorted(rendered))
 
+    def test_junos_bgp_global_rendered_multipath_options(self):
+        prefix = (
+            '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            "<nc:bgp>"
+        )
+        suffix = "</nc:bgp></nc:protocols>"
+        test_cases = (
+            (dict(set=True), "<nc:multipath/>"),
+            (dict(disable=True), "<nc:multipath><nc:disable/></nc:multipath>"),
+            (dict(multiple_as=True), "<nc:multipath><nc:multiple-as/></nc:multipath>"),
+            (
+                dict(multiple_as_disable=True),
+                "<nc:multipath><nc:multiple-as><nc:disable/></nc:multiple-as></nc:multipath>",
+            ),
+            (
+                dict(multiple_as=False),
+                '<nc:multipath><nc:multiple-as delete="delete"/></nc:multipath>',
+            ),
+            (
+                dict(multiple_as_disable=False),
+                '<nc:multipath><nc:multiple-as><nc:disable delete="delete"/>'
+                "</nc:multiple-as></nc:multipath>",
+            ),
+            (
+                dict(set=False),
+                '<nc:multipath delete="delete"/>',
+            ),
+        )
+
+        for multipath, expected_xml in test_cases:
+            with self.subTest(multipath=multipath):
+                set_module_args(
+                    dict(config=dict(multipath=multipath), state="rendered"),
+                )
+                result = self.execute_module(changed=False)
+                self.assertEqual(result["rendered"], prefix + expected_xml + suffix)
+
+    def test_junos_bgp_global_merged_multipath_multiple_as(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    as_number="65100",
+                    multipath=dict(set=True, multiple_as=True),
+                ),
+                state="merged",
+            ),
+        )
+        commands = [
+            '<nc:protocols xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            "<nc:bgp><nc:multipath><nc:multiple-as/></nc:multipath></nc:bgp></nc:protocols>",
+            '<nc:routing-options xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">'
+            "<nc:autonomous-system>65100</nc:autonomous-system></nc:routing-options>",
+        ]
+        result = self.execute_module(changed=True, commands=commands)
+        self.assertEqual(sorted(result["commands"]), sorted(commands))
+
     def test_junos_bgp_global_rendered_empty(self):
         """
         :return:
