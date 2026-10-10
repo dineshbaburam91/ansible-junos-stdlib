@@ -3099,6 +3099,125 @@ class TestJunosBgp_address_familyModule(TestJunosModule):
         result = self.execute_module(changed=True)
         self.assertEqual(sorted(result["commands"]), sorted(commands))
 
+    def test_junos_bgp_address_family_import_export_global(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    address_family=[
+                        dict(
+                            afi="inet",
+                            af_type=[
+                                dict(
+                                    type="unicast",
+                                    **{
+                                        "import": ["MATCH-COMM-TEST", "ACCEPT-ALL"],
+                                        "export": ["MATCH-COMM-TEST", "REJECT-ALL"],
+                                    },
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                state="merged",
+            ),
+        )
+        result = self.execute_module(changed=True)
+        xml = "".join(result["commands"])
+        self.assertIn(
+            "<nc:unicast>"
+            "<nc:export>MATCH-COMM-TEST</nc:export>"
+            "<nc:export>REJECT-ALL</nc:export>"
+            "<nc:import>MATCH-COMM-TEST</nc:import>"
+            "<nc:import>ACCEPT-ALL</nc:import>"
+            "</nc:unicast>",
+            xml,
+        )
+
+    def test_junos_bgp_address_family_import_export_group_and_neighbor(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    groups=[
+                        dict(
+                            name="ANSIBLE_GROUP_TEST",
+                            address_family=[
+                                dict(
+                                    afi="inet6",
+                                    af_type=[
+                                        dict(
+                                            type="multicast",
+                                            **{"import": ["P1", "P2"], "export": ["P3"]},
+                                        ),
+                                    ],
+                                ),
+                            ],
+                            neighbors=[
+                                dict(
+                                    neighbor_address="14.14.14.14",
+                                    address_family=[
+                                        dict(
+                                            afi="inet",
+                                            af_type=[
+                                                dict(
+                                                    type="unicast",
+                                                    **{"import": ["N1"], "export": ["N2", "N3"]},
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                state="merged",
+            ),
+        )
+        result = self.execute_module(changed=True)
+        xml = "".join(result["commands"])
+        self.assertIn(
+            "<nc:inet6><nc:multicast><nc:export>P3</nc:export>"
+            "<nc:import>P1</nc:import><nc:import>P2</nc:import>"
+            "</nc:multicast></nc:inet6>",
+            xml,
+        )
+        self.assertIn(
+            "<nc:inet><nc:unicast><nc:export>N2</nc:export>"
+            "<nc:export>N3</nc:export><nc:import>N1</nc:import>"
+            "</nc:unicast></nc:inet>",
+            xml,
+        )
+
+    def test_junos_bgp_address_family_import_export_parsed(self):
+        parsed_str = """
+            <rpc-reply>
+                <configuration>
+                    <protocols>
+                        <bgp>
+                            <group>
+                                <name>ANSIBLE_GROUP_TEST</name>
+                                <family>
+                                    <inet>
+                                        <unicast>
+                                            <import>MATCH-COMM-TEST</import>
+                                            <import>ACCEPT-ALL</import>
+                                            <export>REJECT-ALL</export>
+                                        </unicast>
+                                    </inet>
+                                </family>
+                            </group>
+                        </bgp>
+                    </protocols>
+                </configuration>
+            </rpc-reply>
+        """
+        set_module_args(dict(running_config=parsed_str, state="parsed"))
+        result = self.execute_module(changed=False)
+        af_type = result["parsed"]["groups"][0]["address_family"][0]["af_type"][0]
+        self.assertEqual(af_type["type"], "unicast")
+        self.assertEqual(af_type["import"], ["MATCH-COMM-TEST", "ACCEPT-ALL"])
+        self.assertEqual(af_type["export"], ["REJECT-ALL"])
+
     """
     def test_junos_bgp_address_family_merged_idempotent(self):
         self.get_connection.return_value = load_fixture(

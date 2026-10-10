@@ -471,6 +471,12 @@ class Bgp_address_family(ConfigBase):
                             # build node for explicit_null
                             build_child_xml_node(type_node, "explicit-null")
 
+                    # one node per policy to preserve the chain order
+                    for policy in type.get("export") or []:
+                        build_child_xml_node(type_node, "export", policy)
+                    for policy in type.get("import") or []:
+                        build_child_xml_node(type_node, "import", policy)
+
                     #  add node extended-nexthop
                     if "extended_nexthop" in type.keys():
                         enh = type.get("extended_nexthop")

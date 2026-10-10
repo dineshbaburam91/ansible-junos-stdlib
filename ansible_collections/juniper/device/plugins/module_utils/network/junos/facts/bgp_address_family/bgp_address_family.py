@@ -352,6 +352,14 @@ class Bgp_address_familyFacts(object):
                 if en_dict:
                     nlri_dict["explicit_null"] = en_dict
 
+            # Parse export/import (xmltodict gives a str for a single policy)
+            for policy_key in ("export", "import"):
+                if nlri.get(policy_key):
+                    policies = nlri[policy_key]
+                    if not isinstance(policies, list):
+                        policies = [policies]
+                    nlri_dict[policy_key] = policies
+
             # Parse extended-nexthop
             if "extended-nexthop" in nlri.keys():
                 nlri_dict["extended_nexthop"] = True
