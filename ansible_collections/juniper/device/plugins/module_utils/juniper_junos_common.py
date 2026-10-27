@@ -58,7 +58,7 @@ try:
     HAS_XMLTODICT = True
 except ImportError:
     HAS_XMLTODICT = False
-from ansible.module_utils._text import to_bytes
+from ansible.module_utils.common.text.converters import to_bytes
 from ansible.module_utils.basic import AnsibleModule, boolean
 from ansible.module_utils.common.validation import check_type_dict
 
