@@ -88,7 +88,8 @@ jobs:
           # Using '-p .' installs the collections into ./ansible_collections/
           # This structure allows ansible-test to find the dependencies (netcommon/utils)
           # without needing them installed in the system/user path.
-          ansible-galaxy collection install ansible.netcommon ansible.utils -p . --force
+          # --no-cache avoids ansible-galaxy response-cache corruption from concurrent CI runs.
+          ansible-galaxy collection install ansible.netcommon ansible.utils -p . --force --no-cache
 
       - name: "Install tox-ansible, includes tox"
         run: python -m pip install tox-ansible
@@ -149,8 +150,9 @@ jobs:
           # Install netcommon/utils into the ABSOLUTE workspace so the local
           # juniper.device (checked-out source with unreleased features) and the
           # junos collection all resolve from one absolute ANSIBLE_COLLECTIONS_PATH.
+          # --no-cache avoids ansible-galaxy response-cache corruption from concurrent CI runs.
           ansible-galaxy collection install ansible.netcommon ansible.utils \
-            -p "${{ github.workspace }}" --force
+            -p "${{ github.workspace }}" --force --no-cache
       - name: Run junos unit tests against local collections
         if: matrix.collection == 'junipernetworks/junos'
         working-directory: ansible_collections/${{ matrix.collection }}
@@ -205,7 +207,8 @@ jobs:
           # Using '-p .' installs the collections into ./ansible_collections/
           # This structure allows ansible-test to find the dependencies (netcommon/utils)
           # without needing them installed in the system/user path.
-          ansible-galaxy collection install ansible.netcommon ansible.utils -p .
+          # --no-cache avoids ansible-galaxy response-cache corruption from concurrent CI runs.
+          ansible-galaxy collection install ansible.netcommon ansible.utils -p . --no-cache
 
       - name: Read collection metadata from galaxy.yml
         working-directory: ansible_collections/${{ matrix.collection }}
