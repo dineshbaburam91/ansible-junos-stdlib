@@ -836,6 +836,27 @@ class TestJunosBgp_globalModule(TestJunosModule):
         result = self.execute_module(changed=False)
         self.assertEqual(result["rendered"], rendered)
 
+    def test_junos_bgp_global_rendered_group_multihop_no_nexthop_change_false(self):
+        set_module_args(
+            dict(
+                config=dict(
+                    groups=[
+                        dict(
+                            name="ANSIBLE_TEST",
+                            multihop=dict(set=True, no_nexthop_change=False),
+                        ),
+                    ],
+                ),
+                state="rendered",
+            ),
+        )
+        result = self.execute_module(changed=False)
+        self.assertIn(
+            "<nc:group><nc:name>ANSIBLE_TEST</nc:name><nc:multihop>"
+            '<nc:no-nexthop-change delete="delete"/></nc:multihop></nc:group>',
+            result["rendered"],
+        )
+
     def test_junos_bgp_global_rendered_neighbor_remove_private_set(self):
         set_module_args(
             dict(

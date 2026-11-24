@@ -455,7 +455,9 @@ options:
             description: Set an EBGP multihop session.
             type: bool
           no_nexthop_change:
-            description: Do not change next hop to self in advertisements.
+            description:
+              - Do not change next hop to self in advertisements.
+              - Set to V(false) to remove C(no-nexthop-change) without removing C(multihop).
             type: bool
           ttl:
             description: TTL value for the session.

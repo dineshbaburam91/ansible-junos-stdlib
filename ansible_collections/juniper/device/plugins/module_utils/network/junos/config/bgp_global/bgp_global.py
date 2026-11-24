@@ -794,6 +794,13 @@ class Bgp_global(ConfigBase):
                     )
                 if multihop.get("no_nexthop_change"):
                     build_child_xml_node(multihop_node, "no-nexthop-change")
+                elif multihop.get("no_nexthop_change") is False:
+                    build_child_xml_node(
+                        multihop_node,
+                        "no-nexthop-change",
+                        None,
+                        {"delete": "delete"},
+                    )
 
         # Generate config commands for remove-private
         if want.get("remove_private"):
