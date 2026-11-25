@@ -345,13 +345,27 @@ class Bgp_address_family(ConfigBase):
                             )
 
                     #  Add node for aigp
-                    if "aigp" in type.keys():
-                        aigp = type.get("aigp")
-                        # build node for aigp
-                        if "disable" in aigp.keys():
+                    if "aigp" in type:
+                        aigp = type["aigp"]
+                        if aigp.get("set") is False:
+                            build_child_xml_node(
+                                type_node,
+                                "aigp",
+                                None,
+                                {"delete": "delete"},
+                            )
+                        elif aigp.get("disable") is not None:
                             aigp_node = build_child_xml_node(type_node, "aigp")
-                            build_child_xml_node(aigp_node, "disable")
-                        else:
+                            if aigp["disable"]:
+                                build_child_xml_node(aigp_node, "disable")
+                            else:
+                                build_child_xml_node(
+                                    aigp_node,
+                                    "disable",
+                                    None,
+                                    {"delete": "delete"},
+                                )
+                        elif aigp.get("set") is True:
                             build_child_xml_node(type_node, "aigp")
 
                     #  Add node for damping
@@ -474,11 +488,15 @@ class Bgp_address_family(ConfigBase):
                         build_child_xml_node(type_node, "import", policy)
 
                     #  add node extended-nexthop
-                    if "extended_nexthop" in type.keys():
-                        enh = type.get("extended_nexthop")
-                        # add node extended-nexthop
-                        if enh:
-                            build_child_xml_node(type_node, "extended-nexthop")
+                    if type.get("extended_nexthop") is True:
+                        build_child_xml_node(type_node, "extended-nexthop")
+                    elif type.get("extended_nexthop") is False:
+                        build_child_xml_node(
+                            type_node,
+                            "extended-nexthop",
+                            None,
+                            {"delete": "delete"},
+                        )
 
                     #  add node extended-nexthop-color
                     if "extended_nexthop_color" in type.keys():

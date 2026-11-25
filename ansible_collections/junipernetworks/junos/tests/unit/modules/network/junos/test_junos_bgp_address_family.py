@@ -28,6 +28,8 @@ __metaclass__ = type
 
 from unittest.mock import patch
 
+from lxml import etree
+
 from ansible_collections.juniper.device.plugins.modules import junos_bgp_address_family
 from ansible_collections.junipernetworks.junos.tests.unit.modules.utils import set_module_args
 
@@ -2082,6 +2084,113 @@ class TestJunosBgp_address_familyModule(TestJunosModule):
 
         result = self.execute_module(changed=True)
         self.assertEqual(sorted(result["commands"]), sorted(commands))
+
+    def test_junos_bgp_address_family_aigp_and_extended_nexthop_rendered(self):
+        cases = (
+            ({"extended_nexthop": True, "aigp": {"set": True}}, None, None),
+            ({"extended_nexthop": False, "aigp": {"set": False}}, "delete", "delete"),
+            ({"aigp": {"set": False, "disable": False}}, None, "delete"),
+            ({"extended_nexthop": False}, "delete", None),
+            ({"aigp": {"set": True}}, None, None),
+        )
+        for options, nexthop_delete, aigp_delete in cases:
+            for scope in ("global", "group", "neighbor"):
+                with self.subTest(options=options, scope=scope):
+                    family = [dict(afi="inet", af_type=[dict(type="unicast", **options)])]
+                    if scope == "global":
+                        config = dict(address_family=family)
+                        path = "./{*}bgp/{*}family/{*}inet/{*}unicast"
+                    elif scope == "group":
+                        config = dict(groups=[dict(name="test", address_family=family)])
+                        path = "./{*}bgp/{*}group/{*}family/{*}inet/{*}unicast"
+                    else:
+                        config = dict(
+                            groups=[
+                                dict(
+                                    name="test",
+                                    neighbors=[
+                                        dict(neighbor_address="192.0.2.1", address_family=family),
+                                    ],
+                                ),
+                            ],
+                        )
+                        path = "./{*}bgp/{*}group/{*}neighbor/{*}family/{*}inet/{*}unicast"
+                    set_module_args(dict(config=config, state="rendered"))
+                    result = self.execute_module(changed=False)
+                    node = etree.fromstring(result["rendered"].encode()).find(path)
+                    if "extended_nexthop" in options:
+                        self.assertEqual(
+                            node.find("{*}extended-nexthop").get("delete"),
+                            nexthop_delete,
+                        )
+                    else:
+                        self.assertIsNone(node.find("{*}extended-nexthop"))
+                    aigp = node.find("{*}aigp")
+                    if "aigp" in options:
+                        self.assertEqual(aigp.get("delete"), aigp_delete)
+                        self.assertIsNone(aigp.find("{*}disable"))
+                    else:
+                        self.assertIsNone(aigp)
+
+    def test_junos_bgp_address_family_aigp_disable_values(self):
+        for options, expected in (
+            ({"disable": True}, "<nc:aigp><nc:disable/></nc:aigp>"),
+            ({"set": True, "disable": False}, '<nc:aigp><nc:disable delete="delete"/></nc:aigp>'),
+            ({"disable": False}, '<nc:aigp><nc:disable delete="delete"/></nc:aigp>'),
+        ):
+            with self.subTest(options=options):
+                set_module_args(
+                    dict(
+                        config=dict(
+                            address_family=[
+                                dict(afi="inet", af_type=[dict(type="unicast", aigp=options)]),
+                            ],
+                        ),
+                        state="rendered",
+                    ),
+                )
+                result = self.execute_module(changed=False)
+                self.assertIn(expected, result["rendered"])
+
+    def test_junos_bgp_address_family_false_options_merged(self):
+        for configured in (False, True):
+            with self.subTest(configured=configured):
+                current = "<extended-nexthop/><aigp/>" if configured else ""
+                self.execute_show_command.side_effect = lambda *args, **kwargs: (
+                    "<rpc-reply><configuration><protocols><bgp><group><name>test</name>"
+                    "<family><inet><unicast>" + current + "</unicast></inet></family>"
+                    "</group></bgp></protocols></configuration></rpc-reply>"
+                )
+                self.load_config.return_value = "configuration diff" if configured else None
+                self.mock_commit_configuration.reset_mock()
+                set_module_args(
+                    dict(
+                        config=dict(
+                            groups=[
+                                dict(
+                                    name="test",
+                                    address_family=[
+                                        dict(
+                                            afi="inet",
+                                            af_type=[
+                                                dict(
+                                                    type="unicast",
+                                                    extended_nexthop=False,
+                                                    aigp=dict(set=False),
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        state="merged",
+                    ),
+                )
+                result = self.changed(configured)
+                self.assertIn('<nc:extended-nexthop delete="delete"/>', result["commands"][0])
+                self.assertIn('<nc:aigp delete="delete"/>', result["commands"][0])
+                self.assertEqual(self.mock_commit_configuration.call_count, int(configured))
 
     def test_junos_bgp_address_family_config_005(self):
         """

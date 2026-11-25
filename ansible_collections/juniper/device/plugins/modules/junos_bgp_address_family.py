@@ -184,10 +184,14 @@ options:
                 type: dict
                 suboptions:
                   set:
-                    description: Set AIGP.
+                    description:
+                      - Set AIGP.
+                      - Set to false to remove AIGP, including any disable setting.
                     type: bool
                   disable:
-                    description: Dn not allow sending and receiving of AIGP attribute.
+                    description:
+                      - Do not allow sending and receiving of AIGP attribute.
+                      - Set to false to remove the disable setting.
                     type: bool
               damping:
                 description: Enable route flap damping.
@@ -251,7 +255,9 @@ options:
                 type: list
                 elements: str
               extended_nexthop:
-                description: Enable extended nexthop encoding.
+                description:
+                  - Enable extended nexthop encoding.
+                  - Set to false to remove extended nexthop encoding.
                 type: bool
               extended_nexthop_color:
                 description: Resolve using extended color nexthop.
