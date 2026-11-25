@@ -691,10 +691,14 @@ options:
                 description: Specify maximum number of trace files.
                 type: int
               no_world_readable:
-                description: Don't allow any user to read the log file.
+                description:
+                  - Don't allow any user to read the log file.
+                  - Set to false to remove this option.
                 type: bool
               world_readable:
-                description: Allow any user to read the log file.
+                description:
+                  - Allow any user to read the log file.
+                  - Set to false to remove this option.
                 type: bool
               size:
                 description: Specify maximum trace file size.
@@ -732,26 +736,28 @@ options:
                   - update
                 required: true
               detail:
-                description: Trace detailed information.
+                description: Trace detailed information. Set to false to remove this option.
                 type: bool
               disable:
-                description: Disable this trace flag.
+                description: Disable this trace flag. Set to false to remove this option.
                 type: bool
               receive:
-                description: Trace received packets.
+                description: Trace received packets. Set to false to remove this option.
                 type: bool
               send:
-                description: Trace transmitted packets.
+                description: Trace transmitted packets. Set to false to remove this option.
                 type: bool
               filter:
                 description: Filter to apply to this flag.
                 type: dict
                 suboptions:
                   set:
-                    description: Set filter to apply to this flag.
+                    description:
+                      - Set filter to apply to this flag.
+                      - Set to false to remove the filter.
                     type: bool
                   match_on_prefix:
-                    description: Specify filter based on prefix.
+                    description: Specify filter based on prefix. Set to false to remove this option.
                     type: bool
                   policy:
                     description: Specify filter policy.

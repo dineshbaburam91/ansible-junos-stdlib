@@ -376,6 +376,9 @@ class Bgp_global(ConfigBase):
         return bgp_xml
 
     def parse_attrib(self, bgp_root, want):
+        if want.get("traceoptions"):
+            self._render_traceoptions(bgp_root, want["traceoptions"])
+
         # Generate config commands for advertise-bgp-static
         if want.get("advertise_bgp_static"):
             ad_bgp_static_node = build_child_xml_node(
@@ -957,6 +960,54 @@ class Bgp_global(ConfigBase):
                 )
             bgp_xml.append(bgp_root)
         return bgp_xml
+
+    def _render_traceoptions(self, parent, options):
+        trace_node = build_child_xml_node(parent, "traceoptions")
+        if "file" in options:
+            file_options = options["file"]
+            file_node = build_child_xml_node(trace_node, "file")
+            for key in ("filename", "size", "files"):
+                if key in file_options:
+                    build_child_xml_node(file_node, key, file_options[key])
+            for key in ("world_readable", "no_world_readable"):
+                if key in file_options:
+                    build_child_xml_node(
+                        file_node,
+                        key.replace("_", "-"),
+                        None,
+                        None if file_options[key] else {"delete": "delete"},
+                    )
+
+        for flag in options.get("flag", []):
+            flag_node = build_child_xml_node(trace_node, "flag")
+            build_child_xml_node(flag_node, "name", flag["name"])
+            for key in ("detail", "disable", "receive", "send"):
+                if key in flag:
+                    build_child_xml_node(
+                        flag_node,
+                        key,
+                        None,
+                        None if flag[key] else {"delete": "delete"},
+                    )
+            if "filter" in flag:
+                options_filter = flag["filter"]
+                if options_filter.get("set") is False:
+                    if options_filter.get("match_on_prefix") is True or "policy" in options_filter:
+                        self._module.fail_json(
+                            msg="traceoptions filter set: false cannot be combined with filter options",
+                        )
+                    build_child_xml_node(flag_node, "filter", None, {"delete": "delete"})
+                elif options_filter:
+                    filter_node = build_child_xml_node(flag_node, "filter")
+                    if "match_on_prefix" in options_filter:
+                        if options_filter["match_on_prefix"]:
+                            build_child_xml_node(filter_node, "match-on", "prefix")
+                        else:
+                            build_child_xml_node(
+                                filter_node, "match-on", None, {"delete": "delete"},
+                            )
+                    if "policy" in options_filter:
+                        build_child_xml_node(filter_node, "policy", options_filter["policy"])
 
     def _render_delete_bgp(self, want):
         delete = {"delete": "delete"}

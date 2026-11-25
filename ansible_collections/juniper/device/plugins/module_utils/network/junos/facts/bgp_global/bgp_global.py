@@ -1012,6 +1012,7 @@ class Bgp_globalFacts(object):
                         flag_lst.append(flag_dict)
 
                 to_dict["flag"] = flag_lst
+            if to_dict:
                 cfg_dict["traceoptions"] = to_dict
         # Read traffic-statistics-labeled-path
         if "traffic-statistics-labeled-path" in conf.keys():

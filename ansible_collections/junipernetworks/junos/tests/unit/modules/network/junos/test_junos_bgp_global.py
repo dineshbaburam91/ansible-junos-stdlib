@@ -151,6 +151,135 @@ class TestJunosBgp_globalModule(TestJunosModule):
         self.assertIn("<nc:import>IMPORT-A</nc:import>", rendered)
         self.assertIn("<nc:export>EXPORT-A</nc:export>", rendered)
 
+    def test_junos_bgp_global_rendered_traceoptions(self):
+        config = {
+            "traceoptions": {
+                "file": {"filename": "corenet-bgp.log", "size": 5000, "files": 5},
+                "flag": [{"name": name} for name in ("keepalive", "open", "state", "timer")],
+            },
+            "groups": [
+                {
+                    "name": "TEST",
+                    "traceoptions": {
+                        "file": {"filename": "bgp.log", "size": 5000, "world_readable": True},
+                        "flag": [
+                            {
+                                "name": "update",
+                                "detail": True,
+                                "disable": True,
+                                "receive": True,
+                                "send": True,
+                                "filter": {"match_on_prefix": True, "policy": "POLICY"},
+                            },
+                        ],
+                    },
+                    "neighbors": [
+                        {
+                            "neighbor_address": "192.0.2.1",
+                            "traceoptions": {
+                                "file": {"filename": "peer.log", "no_world_readable": True},
+                                "flag": [{"name": "all", "filter": {"set": True}}],
+                            },
+                        },
+                    ],
+                },
+            ],
+        }
+        set_module_args(dict(config=config, state="rendered"))
+        rendered = self.execute_module(changed=False)["rendered"]
+        root = etree.fromstring(rendered.encode())
+        ns = {"nc": "urn:ietf:params:xml:ns:netconf:base:1.0"}
+        global_trace = root.find("nc:bgp/nc:traceoptions", ns)
+        self.assertEqual(global_trace.findtext("nc:file/nc:filename", namespaces=ns), "corenet-bgp.log")
+        self.assertEqual(global_trace.findtext("nc:file/nc:size", namespaces=ns), "5000")
+        self.assertEqual(global_trace.findtext("nc:file/nc:files", namespaces=ns), "5")
+        self.assertEqual(
+            global_trace.xpath("nc:flag/nc:name/text()", namespaces=ns),
+            ["keepalive", "open", "state", "timer"],
+        )
+        group_trace = root.find("nc:bgp/nc:group/nc:traceoptions", ns)
+        self.assertEqual(group_trace.findtext("nc:file/nc:filename", namespaces=ns), "bgp.log")
+        self.assertIsNotNone(group_trace.find("nc:file/nc:world-readable", ns))
+        flag = group_trace.find("nc:flag", ns)
+        self.assertEqual(flag.findtext("nc:name", namespaces=ns), "update")
+        for option in ("detail", "disable", "receive", "send"):
+            self.assertIsNotNone(flag.find("nc:" + option, ns))
+        self.assertEqual(flag.findtext("nc:filter/nc:match-on", namespaces=ns), "prefix")
+        self.assertEqual(flag.findtext("nc:filter/nc:policy", namespaces=ns), "POLICY")
+        peer_trace = root.find("nc:bgp/nc:group/nc:neighbor/nc:traceoptions", ns)
+        self.assertIsNotNone(peer_trace.find("nc:file/nc:no-world-readable", ns))
+        self.assertIsNotNone(peer_trace.find("nc:flag/nc:filter", ns))
+
+    def test_junos_bgp_global_traceoptions_false_values(self):
+        config = {
+            "traceoptions": {
+                "file": {"filename": "bgp.log", "world_readable": False},
+                "flag": [
+                    {"name": "state", "detail": False, "filter": {"set": False}},
+                    {"name": "update", "filter": {"match_on_prefix": False}},
+                ],
+            },
+        }
+        set_module_args(dict(config=config, state="rendered"))
+        rendered = self.execute_module(changed=False)["rendered"]
+        root = etree.fromstring(rendered.encode())
+        ns = {"nc": "urn:ietf:params:xml:ns:netconf:base:1.0"}
+        trace = root.find("nc:bgp/nc:traceoptions", ns)
+        self.assertEqual(trace.find("nc:file/nc:world-readable", ns).get("delete"), "delete")
+        flags = trace.findall("nc:flag", ns)
+        self.assertEqual(flags[0].find("nc:detail", ns).get("delete"), "delete")
+        self.assertEqual(flags[0].find("nc:filter", ns).get("delete"), "delete")
+        self.assertEqual(flags[1].find("nc:filter/nc:match-on", ns).get("delete"), "delete")
+
+    def test_junos_bgp_global_traceoptions_merged(self):
+        config = {
+            "traceoptions": {"file": {"filename": "bgp.log"}, "flag": [{"name": "state"}]},
+            "groups": [{"name": "TEST", "traceoptions": {"flag": [{"name": "all"}]}}],
+        }
+        for changed in (True, False):
+            with self.subTest(changed=changed):
+                self.load_config.return_value = "configuration diff" if changed else None
+                self.mock_commit_configuration.reset_mock()
+                set_module_args(dict(config=config, state="merged"))
+                result = self.execute_module(changed=changed)
+                root = etree.fromstring(result["commands"][0].encode())
+                ns = {"nc": "urn:ietf:params:xml:ns:netconf:base:1.0"}
+                self.assertEqual(
+                    root.findtext("nc:bgp/nc:traceoptions/nc:flag/nc:name", namespaces=ns),
+                    "state",
+                )
+                self.assertEqual(
+                    root.findtext("nc:bgp/nc:group/nc:traceoptions/nc:flag/nc:name", namespaces=ns),
+                    "all",
+                )
+                self.assertEqual(self.mock_commit_configuration.call_count, int(changed))
+
+    def test_junos_bgp_global_traceoptions_rejects_filter_conflicts(self):
+        for filter_options in ({"set": False, "policy": "POLICY"}, {"set": False, "match_on_prefix": True}):
+            with self.subTest(filter_options=filter_options):
+                set_module_args(
+                    dict(
+                        config={"traceoptions": {"flag": [{"name": "update", "filter": filter_options}]}},
+                        state="rendered",
+                    ),
+                )
+                result = self.execute_module(failed=True)
+                self.assertIn("filter set: false cannot be combined", result["msg"])
+
+    def test_junos_bgp_global_parsed_traceoptions_file_only(self):
+        parsed_str = """
+            <rpc-reply><configuration><protocols><bgp>
+                <traceoptions><file><filename>bgp.log</filename><size>5m</size></file></traceoptions>
+                <group><name>TEST</name>
+                    <traceoptions><file><filename>group.log</filename></file></traceoptions>
+                </group>
+            </bgp></protocols></configuration></rpc-reply>
+        """
+        set_module_args(dict(running_config=parsed_str, state="parsed"))
+        parsed = self.execute_module(changed=False)["parsed"]
+        self.assertEqual(parsed["traceoptions"]["file"], dict(filename="bgp.log", size=5242880))
+        self.assertEqual(parsed["groups"][0]["traceoptions"]["file"], dict(filename="group.log"))
+
     def test_junos_bgp_global_parsed_traceoptions_flags(self):
         parsed_str = """
             <rpc-reply><configuration><protocols><bgp>
