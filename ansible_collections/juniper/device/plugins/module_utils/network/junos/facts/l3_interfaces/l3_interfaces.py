@@ -93,8 +93,6 @@ class L3_interfacesFacts(object):
                 </configuration>
                 """
             data = self.get_config(connection, config_filter)
-        data_string = etree.tostring(data, pretty_print=True).decode()
-
         if isinstance(data, str):
             data = etree.fromstring(
                 to_bytes(data, errors="surrogate_then_replace"),
@@ -193,4 +191,6 @@ class L3_interfacesFacts(object):
         ip_address = {"address": address_cfg.get("name")}
         if "preferred" in address_cfg:
             ip_address["preferred"] = True
+        if "virtual-gateway-address" in address_cfg:
+            ip_address["virtual_gateway_address"] = address_cfg["virtual-gateway-address"]
         return ip_address

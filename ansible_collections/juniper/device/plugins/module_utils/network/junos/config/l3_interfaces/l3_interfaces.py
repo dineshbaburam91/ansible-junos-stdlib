@@ -242,12 +242,22 @@ class L3_interfaces(ConfigBase):
             build_child_xml_node(ip_protocol, "mtu", int(config.get("mtu")))
         for ip_addr in config[protocol]:
             if ip_addr["address"] == "dhcp" and protocol == "ipv4":
+                if ip_addr.get("virtual_gateway_address") is not None:
+                    self._module.fail_json(
+                        msg="virtual_gateway_address cannot be configured with DHCP",
+                    )
                 build_child_xml_node(ip_protocol, "dhcp")
             else:
                 ip_addresses = build_child_xml_node(ip_protocol, "address")
                 build_child_xml_node(ip_addresses, "name", ip_addr["address"])
                 if ip_addr.get("preferred"):
                     build_child_xml_node(ip_addresses, "preferred")
+                if ip_addr.get("virtual_gateway_address") is not None:
+                    build_child_xml_node(
+                        ip_addresses,
+                        "virtual-gateway-address",
+                        ip_addr["virtual_gateway_address"],
+                    )
 
     def _state_deleted(self, want, have):
         """Generate XML configuration to remove the current configuration of the provided objects.
@@ -255,16 +265,18 @@ class L3_interfaces(ConfigBase):
         :returns: The XML configuration necessary to remove the current configuration of the provided objects.
         """
         intf_xml = []
-        existing_l3_intfs = {l3_intf["name"] for l3_intf in have}
+        existing_l3_intfs = {
+            (l3_intf["name"], str(l3_intf["unit"])): l3_intf for l3_intf in have
+        }
         if not want:
             want = have
         for config in want:
-            if config["name"] not in existing_l3_intfs:
+            intf = existing_l3_intfs.get((config["name"], str(config["unit"])))
+            if not intf:
                 continue
             root_node, unit_node = self._get_common_xml_node(config["name"])
             build_child_xml_node(unit_node, "name", str(config["unit"]))
             family = build_child_xml_node(unit_node, "family")
-            intf = next((intf for intf in have if intf["name"] == config["name"]), None)
             if intf:
                 if "description" in intf:
                     build_child_xml_node(

@@ -28,10 +28,39 @@ __metaclass__ = type
 
 from unittest.mock import patch
 
+from lxml import etree
+
 from ansible_collections.juniper.device.plugins.modules import junos_l3_interfaces
 from ansible_collections.junipernetworks.junos.tests.unit.modules.utils import set_module_args
 
 from .junos_module import TestJunosModule, load_fixture
+
+
+GATEWAY_CONFIG = dict(
+    name="irb",
+    unit=216,
+    ipv4=[
+        dict(address="10.195.217.66/28", virtual_gateway_address="10.195.217.65"),
+        dict(address="192.0.2.2/24", preferred=True),
+    ],
+    ipv6=[
+        dict(address="fd01:976a:d604:2020::10/64", virtual_gateway_address="fd01:976a:d604:2020::1"),
+    ],
+)
+
+GATEWAY_XML = b"""
+<rpc-reply><configuration><interfaces><interface>
+  <name>irb</name>
+  <unit><name>100</name><family><inet><address><name>192.0.2.1/24</name></address></inet></family></unit>
+  <unit><name>216</name><family>
+    <inet>
+      <address><name>10.195.217.66/28</name><virtual-gateway-address>10.195.217.65</virtual-gateway-address></address>
+      <address><name>192.0.2.2/24</name><preferred/></address>
+    </inet>
+    <inet6><address><name>fd01:976a:d604:2020::10/64</name><virtual-gateway-address>fd01:976a:d604:2020::1</virtual-gateway-address></address></inet6>
+  </family></unit>
+</interface></interfaces></configuration></rpc-reply>
+"""
 
 
 class TestJunosL3InterfacesModule(TestJunosModule):
@@ -254,6 +283,78 @@ class TestJunosL3InterfacesModule(TestJunosModule):
             "</nc:unit></nc:interface></nc:interfaces>",
         ]
         self.execute_module(changed=False, commands=commands)
+
+    def test_virtual_gateway_facts(self):
+        for state in ("parsed", "gathered"):
+            with self.subTest(state=state):
+                self.get_config.side_effect = lambda *args, **kwargs: etree.fromstring(GATEWAY_XML)
+                args = dict(state=state)
+                if state == "parsed":
+                    args["running_config"] = GATEWAY_XML.decode()
+                set_module_args(args)
+                result = self.execute_module(changed=False)
+                self.assertEqual(result[state][1], dict(GATEWAY_CONFIG, unit="216"))
+
+    def test_virtual_gateway_rendered_and_action_states(self):
+        ns = {"nc": "urn:ietf:params:xml:ns:netconf:base:1.0"}
+        for state in ("rendered", "merged", "replaced", "overridden", "deleted"):
+            with self.subTest(state=state):
+                self.get_config.side_effect = lambda *args, **kwargs: etree.fromstring(GATEWAY_XML)
+                set_module_args(dict(config=[GATEWAY_CONFIG], state=state))
+                result = self.execute_module(changed=state != "rendered")
+                xml = result["rendered"] if state == "rendered" else result["commands"][0]
+                interfaces = etree.fromstring(xml.encode()).findall("nc:interface", ns)
+                if state in ("replaced", "deleted"):
+                    self.assertEqual(interfaces[0].find("nc:unit/nc:name", ns).text, "216")
+                    for family in ("inet", "inet6"):
+                        address = interfaces[0].find(
+                            "nc:unit/nc:family/nc:{}/nc:address".format(family), ns,
+                        )
+                        self.assertEqual(address.get("delete"), "delete")
+                if state == "overridden":
+                    deleted_units = {
+                        interface.find("nc:unit/nc:name", ns).text: interface
+                        for interface in interfaces[:-1]
+                    }
+                    self.assertEqual(set(deleted_units), {"100", "216"})
+                    self.assertIsNotNone(
+                        deleted_units["216"].find(
+                            "nc:unit/nc:family/nc:inet6/nc:address", ns,
+                        ),
+                    )
+                if state != "deleted":
+                    unit = interfaces[-1].find("nc:unit", ns)
+                    for family, expected in (
+                        ("inet", "10.195.217.65"),
+                        ("inet6", "fd01:976a:d604:2020::1"),
+                    ):
+                        gateway = unit.find(
+                            "nc:family/nc:{}/nc:address/nc:virtual-gateway-address".format(family),
+                            ns,
+                        )
+                        self.assertEqual(gateway.text, expected)
+                    ipv4_addresses = unit.findall("nc:family/nc:inet/nc:address", ns)
+                    self.assertEqual(len(ipv4_addresses), 2)
+                    self.assertIsNone(ipv4_addresses[1].find("nc:virtual-gateway-address", ns))
+                    self.assertIsNotNone(ipv4_addresses[1].find("nc:preferred", ns))
+
+    def test_virtual_gateway_unchanged_when_device_reports_no_diff(self):
+        self.get_config.side_effect = lambda *args, **kwargs: etree.fromstring(GATEWAY_XML)
+        for state in ("merged", "replaced", "overridden"):
+            with self.subTest(state=state):
+                set_module_args(dict(config=[GATEWAY_CONFIG], state=state))
+                self.execute_module(changed=False)
+        self.mock_commit_configuration.assert_not_called()
+
+    def test_virtual_gateway_rejected_with_dhcp(self):
+        set_module_args(
+            dict(
+                config=[dict(name="irb", ipv4=[dict(address="dhcp", virtual_gateway_address="192.0.2.1")])],
+                state="rendered",
+            ),
+        )
+        result = self.execute_module(failed=True)
+        self.assertIn("cannot be configured with DHCP", result["msg"])
 
     def test_junos_l3_interfaces_merged_comment_01(self):
         original_set_module_args = set_module_args

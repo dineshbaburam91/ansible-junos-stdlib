@@ -27,6 +27,7 @@ class L3_interfacesArgs(object):  # pylint: disable=R0903
                     "options": {
                         "address": {"type": "str"},
                         "preferred": {"type": "bool"},
+                        "virtual_gateway_address": {"type": "str"},
                     },
                     "type": "list",
                 },
@@ -35,6 +36,7 @@ class L3_interfacesArgs(object):  # pylint: disable=R0903
                     "options": {
                         "address": {"type": "str"},
                         "preferred": {"type": "bool"},
+                        "virtual_gateway_address": {"type": "str"},
                     },
                     "type": "list",
                 },

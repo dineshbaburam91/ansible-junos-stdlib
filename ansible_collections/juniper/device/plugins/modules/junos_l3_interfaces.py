@@ -97,6 +97,11 @@ options:
             description:
             - Mark this address as preferred on the interface.
             type: bool
+          virtual_gateway_address:
+            description:
+            - Virtual gateway IPv4 address associated with this interface address.
+            - Cannot be used with C(dhcp).
+            type: str
       ipv6:
         description:
         - IPv6 addresses to be set for the Layer 3 logical interface mentioned in
@@ -114,6 +119,10 @@ options:
             description:
             - Mark this address as preferred on the interface.
             type: bool
+          virtual_gateway_address:
+            description:
+            - Virtual gateway IPv6 address associated with this interface address.
+            type: str
   running_config:
     description:
     - This option is used only with state I(parsed).
@@ -144,6 +153,20 @@ options:
     default: merged
 """
 EXAMPLES = """
+# Configure virtual gateways on an IRB interface.
+- name: Configure IPv4 and IPv6 virtual gateways
+  juniper.device.junos_l3_interfaces:
+    config:
+      - name: irb
+        unit: 216
+        ipv4:
+          - address: 10.195.217.66/28
+            virtual_gateway_address: 10.195.217.65
+        ipv6:
+          - address: fd01:976a:d604:2020::10/64
+            virtual_gateway_address: fd01:976a:d604:2020::1
+    state: merged
+
 # Using merged
 
 # Before state
